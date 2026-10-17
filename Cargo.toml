@@ -1,0 +1,48 @@
+[package]
+name = "ratatui-lipgloss"
+version = "1.0.0"
+authors = ["Michael Christenson <michael@weirdbrains.com>"]
+edition = "2024"
+rust-version = "1.88"
+description = "Lip Gloss-style declarative, chainable styling (padding, margins, borders, alignment, sizing, joins) for ratatui widgets and text"
+license = "BSD-3-Clause"
+readme = "README.md"
+# repository = "https://github.com/<owner>/ratatui-lipgloss"
+documentation = "https://docs.rs/ratatui-lipgloss"
+keywords = ["ratatui", "tui", "terminal", "style", "lipgloss"]
+categories = ["command-line-interface", "text-processing"]
+include = [
+    "src/**/*",
+    "examples/**/*",
+    "tests/**/*",
+    "Cargo.toml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+]
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false, features = ["std", "underline-color"] }
+unicode-segmentation = "1.12"
+unicode-width = "0.2"
+
+[dev-dependencies]
+ratatui = "0.30.2"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[example]]
+name = "showcase"
+test = true
+
+[[example]]
+name = "widgets"
+test = true
