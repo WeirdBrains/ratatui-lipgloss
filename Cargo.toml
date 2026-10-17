@@ -1,13 +1,13 @@
 [package]
 name = "ratatui-lipgloss"
 version = "1.0.0"
-authors = ["Michael Christenson <michael@weirdbrains.com>"]
+authors = ["Michael Christenson <m3talsmith@gmail.com>", "Weird Brains <michael@weirdbrains.com>"]
 edition = "2024"
 rust-version = "1.88"
 description = "Lip Gloss-style declarative, chainable styling (padding, margins, borders, alignment, sizing, joins) for ratatui widgets and text"
 license = "BSD-3-Clause"
 readme = "README.md"
-# repository = "https://github.com/<owner>/ratatui-lipgloss"
+repository = "https://github.com/WeirdBrains/ratatui-lipgloss"
 documentation = "https://docs.rs/ratatui-lipgloss"
 keywords = ["ratatui", "tui", "terminal", "style", "lipgloss"]
 categories = ["command-line-interface", "text-processing"]
