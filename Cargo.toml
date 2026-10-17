@@ -1,6 +1,6 @@
 [package]
 name = "ratatui-lipgloss"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Michael Christenson <m3talsmith@gmail.com>", "Weird Brains <michael@weirdbrains.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -45,4 +45,8 @@ test = true
 
 [[example]]
 name = "widgets"
+test = true
+
+[[example]]
+name = "tree"
 test = true

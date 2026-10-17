@@ -163,7 +163,7 @@ impl Style {
             }
 
             // 6. Border.
-            let spec = self.border_spec(dark);
+            let mut spec = self.border_spec(dark);
             if spec.top || spec.right || spec.bottom || spec.left {
                 rows = spec.apply(rows);
             }

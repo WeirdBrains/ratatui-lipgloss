@@ -108,6 +108,8 @@ pub struct Style {
     pub(crate) inline: Option<bool>,
     pub(crate) tab_width: Option<u16>,
     pub(crate) color_whitespace: Option<bool>,
+    pub(crate) border_foreground_blend: Option<Vec<TerminalColor>>,
+    pub(crate) border_foreground_blend_offset: Option<i32>,
 }
 
 macro_rules! bool_rules {
@@ -565,6 +567,8 @@ impl Style {
         self.border_right_background = None;
         self.border_bottom_background = None;
         self.border_left_background = None;
+        self.border_foreground_blend = None;
+        self.border_foreground_blend_offset = None;
         self
     }
 
@@ -585,7 +589,87 @@ impl Style {
             right_style: style(self.border_right_foreground, self.border_right_background),
             bottom_style: style(self.border_bottom_foreground, self.border_bottom_background),
             left_style: style(self.border_left_foreground, self.border_left_background),
+            blend_stops: self
+                .border_foreground_blend
+                .iter()
+                .flatten()
+                .filter_map(|c| c.resolve(dark))
+                .collect(),
+            blend_offset: self.border_foreground_blend_offset.unwrap_or(0),
+            blend: None,
         }
+    }
+
+    /// Sets a gradient for the border foreground, blended around the whole
+    /// perimeter clockwise from the top-left corner (Lip Gloss v2's
+    /// `BorderForegroundBlend`). It overrides the other border foreground
+    /// colors.
+    ///
+    /// With no colors this does nothing; with a single color it is the same
+    /// as [`Style::border_foreground`]. When all sides are drawn you will
+    /// usually want the first and last color to match so the gradient wraps
+    /// around smoothly.
+    ///
+    /// ```
+    /// use ratatui_lipgloss::{Border, Style};
+    ///
+    /// let s = Style::new()
+    ///     .border(Border::rounded())
+    ///     .border_foreground_blend(["#00FA68", "#9900FF", "#ED5353", "#00FA68"]);
+    /// let text = s.render("gradient");
+    /// let top = &text.lines[0].spans;
+    /// assert_ne!(top.first().unwrap().style.fg, top.last().unwrap().style.fg);
+    /// ```
+    #[must_use]
+    pub fn border_foreground_blend<I, C>(mut self, colors: I) -> Self
+    where
+        I: IntoIterator<Item = C>,
+        C: Into<TerminalColor>,
+    {
+        let colors: Vec<TerminalColor> = colors.into_iter().map(Into::into).collect();
+        match colors.as_slice() {
+            [] => self,
+            [one] => self.border_foreground(*one),
+            _ => {
+                self.border_foreground_blend = Some(colors);
+                self
+            }
+        }
+    }
+
+    /// Removes the border gradient rule.
+    #[must_use]
+    pub fn unset_border_foreground_blend(mut self) -> Self {
+        self.border_foreground_blend = None;
+        self
+    }
+
+    /// Returns the border gradient colors, if set.
+    #[must_use]
+    pub fn get_border_foreground_blend(&self) -> Option<&[TerminalColor]> {
+        self.border_foreground_blend.as_deref()
+    }
+
+    /// Rotates the border gradient by `cells` around the perimeter
+    /// (positive = clockwise, starting at the top-left corner; values larger
+    /// than the perimeter wrap around). Animate it for a spinning border.
+    #[must_use]
+    pub fn border_foreground_blend_offset(mut self, cells: i32) -> Self {
+        self.border_foreground_blend_offset = Some(cells);
+        self
+    }
+
+    /// Removes the border gradient offset rule.
+    #[must_use]
+    pub fn unset_border_foreground_blend_offset(mut self) -> Self {
+        self.border_foreground_blend_offset = None;
+        self
+    }
+
+    /// Returns the border gradient offset (`0` if unset).
+    #[must_use]
+    pub fn get_border_foreground_blend_offset(&self) -> i32 {
+        self.border_foreground_blend_offset.unwrap_or(0)
     }
 
     // ----- frame sizes -----------------------------------------------------
@@ -650,6 +734,9 @@ impl Style {
         {
             self.margin_background = Some(bg);
         }
+        if self.border_foreground_blend.is_none() {
+            self.border_foreground_blend = other.border_foreground_blend.clone();
+        }
         macro_rules! inherit {
             ($($f:ident),*) => {$(
                 if self.$f.is_none() {
@@ -691,7 +778,8 @@ impl Style {
             border_left_background,
             inline,
             tab_width,
-            color_whitespace
+            color_whitespace,
+            border_foreground_blend_offset
         );
         self
     }

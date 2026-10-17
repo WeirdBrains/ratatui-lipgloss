@@ -1,5 +1,5 @@
-//! Every border preset, plus per-side toggles and colors, printed with
-//! `join_horizontal` / `join_vertical`.
+//! Every border preset, plus per-side toggles and colors and gradient
+//! (blended) borders, printed with `join_horizontal` / `join_vertical`.
 //!
 //! ```sh
 //! cargo run --example borders
@@ -67,8 +67,42 @@ fn main() {
                 .render("custom\npattern"),
         ],
     );
+    // Gradient borders blend their colors clockwise around the perimeter,
+    // starting at the top-left corner; the offset rotates the gradient.
+    let gradient = |name: &str, border: Border, colors: &[&str], offset: i32| {
+        Style::new()
+            .border(border)
+            .border_foreground_blend(colors.iter().copied())
+            .border_foreground_blend_offset(offset)
+            .padding((1, 2))
+            .width(18)
+            .align(Position::CENTER)
+            .margin_right(1)
+            .render(name.to_string())
+    };
+    let row4 = join_horizontal(
+        Position::TOP,
+        [
+            gradient("two stops", Border::rounded(), &["#F25D94", "#874BFD"], 0),
+            gradient(
+                "rainbow",
+                Border::thick(),
+                &[
+                    "#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF",
+                ],
+                0,
+            ),
+            gradient("offset 10", Border::rounded(), &["#F25D94", "#874BFD"], 10),
+            gradient(
+                "double",
+                Border::double(),
+                &["#04B575", "#FFFDF5", "#04B575"],
+                0,
+            ),
+        ],
+    );
     println!(
         "{}",
-        to_ansi_string(&join_vertical(Position::LEFT, [row1, row2, row3]))
+        to_ansi_string(&join_vertical(Position::LEFT, [row1, row2, row3, row4]))
     );
 }

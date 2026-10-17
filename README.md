@@ -4,9 +4,12 @@ Declarative, chainable, CSS-like styling for [ratatui](https://ratatui.rs),
 inspired by Charm's [Lip Gloss](https://github.com/charmbracelet/lipgloss).
 
 Define a `Style` once (colors, text attributes, padding, margins, borders,
-alignment, sizing) and then use it to style ratatui text, wrap ratatui
-widgets, or build whole layouts with `join_horizontal`, `join_vertical` and
-`place`.
+gradient borders, alignment, sizing) and then use it to style ratatui text,
+wrap ratatui widgets, or build whole layouts with `join_horizontal`,
+`join_vertical` and `place`. Ports of Lip Gloss's `table`, `list` and `tree`
+packages render to `Text` and work as ratatui widgets. The tree also has an
+interactive `TreeState` with selection, collapsing, scrolling and mouse hit
+testing, since ratatui has no tree widget of its own.
 
 ```rust
 use ratatui_lipgloss::{Border, Position, Style};
@@ -37,7 +40,7 @@ or in `Cargo.toml`:
 ```toml
 [dependencies]
 ratatui = "0.30"
-ratatui-lipgloss = "1.0"
+ratatui-lipgloss = "1.1"
 ```
 
 The crate targets **ratatui 0.30** (MSRV 1.88, same as ratatui). It depends on
@@ -128,11 +131,75 @@ use ratatui_lipgloss::Style;
 println!("{}", Style::new().italic(true).foreground("201").render_ansi("Hi!"));
 ```
 
+### 6. Tables, lists and trees
+
+```rust
+use ratatui_lipgloss::list::{self, List};
+use ratatui_lipgloss::table::{Table, TableRow};
+use ratatui_lipgloss::tree::{self, Tree, TreeState};
+use ratatui_lipgloss::{Border, Style};
+
+let table = Table::new()
+    .border(Border::rounded())
+    .border_style(Style::new().foreground("99"))
+    .headers(["LANGUAGE", "FORMAL"])
+    .row(["French", "Bonjour"])
+    .row(["Japanese", "こんにちは"])
+    .style_func(|row, _col| match row {
+        TableRow::Header => Style::new().bold(true).padding((0, 1)),
+        TableRow::Data(_) => Style::new().padding((0, 1)),
+    });
+// `table.render()` gives a `Text`; `frame.render_widget(&table, area)` draws it.
+assert_eq!(table.render().lines.len(), 6);
+
+let groceries = List::new(["Fruit"])
+    .item(List::new(["Apple", "Yuzu"]).enumerator(list::roman))
+    .item("Vegetables");
+assert_eq!(
+    groceries.to_string(),
+    "• Fruit\n   I. Apple\n  II. Yuzu\n• Vegetables"
+);
+
+let files = tree::root("~")
+    .child(tree::root("src").child("lib.rs").child("main.rs"))
+    .child("Cargo.toml")
+    .enumerator(tree::rounded_enumerator);
+assert_eq!(
+    files.to_string(),
+    "~\n├── src\n│   ├── lib.rs\n│   ╰── main.rs\n╰── Cargo.toml"
+);
+// Interactive: frame.render_stateful_widget(&files, area, &mut state), then
+// state.select_next(&files), state.toggle_selected(), state.path_at(x, y), ...
+let mut state = TreeState::new();
+state.select_first(&files);
+```
+
+### 7. Gradient borders
+
+```rust
+use ratatui_lipgloss::{Border, Style};
+
+let style = Style::new()
+    .border(Border::rounded())
+    .border_foreground_blend(["#F25D94", "#874BFD", "#5FAFFF"])
+    .border_foreground_blend_offset(4) // rotate clockwise; animate it for a spin
+    .padding((1, 2));
+let text = style.render("Gradient!");
+// Also works around widgets: `paragraph.styled(&style)`.
+```
+
+The colors blend clockwise around the whole perimeter, starting at the
+top-left corner, as in Lip Gloss v2.
+
 ## Examples
 
 ```sh
 cargo run --example quickstart           # README example, printed with ANSI codes
-cargo run --example borders              # every border preset, per-side borders, custom patterns
+cargo run --example borders              # every border preset, per-side borders, custom patterns, gradients
+cargo run --example table                # styled cells, separators, fixed width/height, markdown
+cargo run --example list                 # all enumerators, nested lists, custom enumerators
+cargo run --example tree                 # interactive file tree (TUI, keys + mouse, q/Esc quits)
+cargo run --example tree -- --print      # the tree, printed once to stdout
 cargo run --example widgets              # Paragraph / List / Gauge wrapped in styles (TUI, keys + mouse, q/Esc quits)
 cargo run --example showcase             # interactive port of Lip Gloss's layout demo (TUI, keys + mouse, q/Esc quits)
 cargo run --example showcase -- --print  # same, printed once to stdout
@@ -217,7 +284,7 @@ plain value, so `clone()` makes a true copy.
 | Custom borders with repeating patterns | `Border { .. }` (`&'static str` fields) | ✅ |
 | `Border(b, sides...)`, `BorderTop/Right/Bottom/Left` | `border`, `border_with_sides`, `border_top` … | ✅ |
 | Per-side `BorderForeground` / `BorderBackground` | `border_*_foreground`, `border_*_background` | ✅ |
-| `BorderForegroundBlend` (gradient borders) | — | ❌ |
+| `BorderForegroundBlend`, `BorderForegroundBlendOffset` (gradient borders) | `border_foreground_blend`, `border_foreground_blend_offset` | ✅ |
 | `Inherit`, `Unset*`, `Get*` | `inherit`, `unset_*`, `get_*` | ✅ |
 | `Inline` | `inline` | ✅ |
 | `TabWidth` | `tab_width` (0 removes tabs) | ✅ (no `NoTabConversion`) |
@@ -229,7 +296,10 @@ plain value, so `clone()` makes a true copy.
 | `Place`, `PlaceHorizontal`, `PlaceVertical`, whitespace options | `place`, `place_horizontal`, `place_vertical`, `place_with` + `Whitespace` | ✅ |
 | `Wrap` | built into `width` | ⚠️ (no standalone function) |
 | Compositor / layers | — | ❌ (use ratatui's layout + buffer) |
-| `table`, `list`, `tree` sub-packages | — | ❌ (planned; use ratatui's `Table` / `List` wrapped with `.styled()`) |
+| `table` package: headers, rows, `StyleFunc`, border + separator toggles, `Width`, `Height`, `YOffset`, `Wrap` | `table::Table` (`Text` + `Widget`) | ✅ |
+| `list` package: bullet, dash, asterisk, arabic, alphabet, roman and custom enumerators, nesting, style funcs | `list::List` (`Text` + `Widget` + `StatefulWidget`) | ✅ |
+| `tree` package: default / rounded enumerators, indenters, root/item/enumerator styles, `Hide`, `Offset`, `Width` | `tree::Tree` (`Text` + `Widget`) | ✅ |
+| *(ratatui only)* interactive trees: selection, collapse/expand, scrolling, mouse hit testing | `tree::TreeState` + `StatefulWidget for &Tree` | ✅ |
 | *(ratatui only)* wrap widgets & stateful widgets | `StyledWidget`, `WidgetStyleExt::styled`, `Style::wrap` | ✅ |
 | *(ratatui only)* to/from `ratatui::style::Style`, `Block` | `From` impls, `Style::apply`, `Style::to_block` | ✅ |
 

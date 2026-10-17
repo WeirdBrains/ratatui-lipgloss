@@ -6,6 +6,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-17
+
+### Added
+
+- `table` module, a port of Lip Gloss's `table` package. `Table` has
+  headers, rows and a per-cell `StyleFunc(TableRow, column)` that inherits
+  a `base_style`. It supports any `Border` preset with toggles for the
+  outer edges and the header, column and row separators, and a
+  `border_style`. A fixed `width` grows or shrinks columns, and long cells
+  wrap or are truncated (`wrap(false)`). A fixed `height` shows an `…`
+  overflow row, `y_offset` scrolls, and `visible_rows` reports the rows
+  shown. It renders to `Text`, `render_ansi` or `Display`, and `&Table`
+  is a ratatui `Widget`.
+- `list` module, a port of Lip Gloss's `list` package. `List` comes with
+  bullet, dash, asterisk, arabic, alphabet and roman enumerators or a
+  custom function. It supports nested lists and trees, enumerator, indenter
+  and item styles (fixed or per-item functions), `hide` and `offset`. It
+  renders to `Text`, and `&List` is a `Widget` and a `StatefulWidget`.
+- `tree` module, a port of Lip Gloss's `tree` package. `Tree`, `Leaf` and
+  `Node` support the default (`├──`/`└──`) and rounded (`╰──`) enumerators,
+  custom enumerators and indenters, and root, item and enumerator styles.
+  Nodes can be hidden, collapsed or cut with `offset`, multi-line items
+  and nested renderers work, and `width` sets a fixed width. It renders to
+  `Text`.
+- `TreeState` and `StatefulWidget for &Tree` make interactive trees
+  possible:
+  - Selection by path (`select_next`/`previous`/`first`/`last`).
+  - `collapse`/`expand`/`toggle`.
+  - Automatic scrolling to the selection.
+  - A `highlight_style` for the selected row.
+  - `path_at(column, row)` for mouse hit testing.
+- Gradient borders. `Style::border_foreground_blend` blends two or more
+  colors clockwise around the border perimeter, as in Lip Gloss v2.
+  `Style::border_foreground_blend_offset` rotates the gradient. They come
+  with matching `get_*`/`unset_*` methods and work in `render`,
+  `render_ansi` and `StyledWidget`.
+- New examples: `table`, `list` and `tree` (interactive, with an animated
+  gradient border). The `borders` example gains gradient borders.
+- `List`, `Table`, `TableRow`, `Tree` and `TreeState` are in the prelude.
+
 ## [1.0.0] - 2026-10-17
 
 Initial release.

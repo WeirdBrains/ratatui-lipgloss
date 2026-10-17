@@ -192,6 +192,64 @@ pub(crate) struct BorderSpec {
     pub right_style: RStyle,
     pub bottom_style: RStyle,
     pub left_style: RStyle,
+    /// Gradient stops for the border foreground (at least 2 to take effect).
+    pub blend_stops: Vec<ratatui::style::Color>,
+    /// Rotation of the gradient around the perimeter, in cells (clockwise).
+    pub blend_offset: i32,
+    /// Per-side gradient colors, computed by [`BorderSpec::prepare`].
+    pub blend: Option<BorderBlend>,
+}
+
+/// Foreground colors for every border cell, per side, in drawing order
+/// (top and bottom left-to-right, left and right top-to-bottom).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct BorderBlend {
+    pub top: Vec<ratatui::style::Color>,
+    pub right: Vec<ratatui::style::Color>,
+    pub bottom: Vec<ratatui::style::Color>,
+    pub left: Vec<ratatui::style::Color>,
+}
+
+impl BorderBlend {
+    /// Lip Gloss v2's `borderBlend`: one gradient around the whole
+    /// perimeter, starting at the top-left corner and running clockwise.
+    pub fn new(
+        stops: &[ratatui::style::Color],
+        width: usize,
+        height: usize,
+        offset: i32,
+    ) -> Option<Self> {
+        if stops.len() < 2 {
+            return None;
+        }
+        let mut gradient = crate::blend_1d((width + height + 2) * 2, stops);
+        let n = gradient.len();
+        let shift = usize::try_from(i64::from(offset).rem_euclid(i64::try_from(n).ok()?)).ok()?;
+        gradient.rotate_right(shift);
+        let mut it = gradient.into_iter();
+        let mut take = |k: usize| it.by_ref().take(k).collect::<Vec<_>>();
+        let top = take(width + 2);
+        let right = take(height);
+        let mut bottom = take(width + 2);
+        let mut left = take(height);
+        bottom.reverse();
+        left.reverse();
+        Some(Self {
+            top,
+            right,
+            bottom,
+            left,
+        })
+    }
+}
+
+fn paint(mut row: Row, colors: &[ratatui::style::Color], start: usize) -> Row {
+    for (k, cell) in row.iter_mut().enumerate() {
+        if let Some(c) = colors.get(start + k) {
+            cell.style.fg = Some(*c);
+        }
+    }
+    row
 }
 
 fn or_space(s: &'static str) -> &'static str {
@@ -259,49 +317,76 @@ impl BorderSpec {
         row
     }
 
+    /// Computes the gradient (if any) for a box of the given inner size.
+    pub fn prepare(&mut self, inner_width: usize, inner_height: usize) {
+        self.blend = BorderBlend::new(
+            &self.blend_stops,
+            inner_width,
+            inner_height,
+            self.blend_offset,
+        );
+    }
+
     pub fn top_row(&self, inner_width: usize) -> Row {
-        self.edge_row(
+        let row = self.edge_row(
             inner_width,
             self.border.top,
             self.border.top_left,
             self.border.top_right,
             self.top_style,
-        )
+        );
+        match &self.blend {
+            Some(b) => paint(row, &b.top, 0),
+            None => row,
+        }
     }
 
     pub fn bottom_row(&self, inner_width: usize) -> Row {
-        self.edge_row(
+        let row = self.edge_row(
             inner_width,
             self.border.bottom,
             self.border.bottom_left,
             self.border.bottom_right,
             self.bottom_style,
-        )
+        );
+        match &self.blend {
+            Some(b) => paint(row, &b.bottom, 0),
+            None => row,
+        }
     }
 
     pub fn left_cells(&self, line: usize) -> Row {
-        pattern_fill(
+        let row = pattern_fill(
             nth_grapheme(self.border.left, line),
             self.left_width(),
             self.left_style,
-        )
+        );
+        match &self.blend {
+            Some(b) => paint(row, &b.left, line),
+            None => row,
+        }
     }
 
     pub fn right_cells(&self, line: usize) -> Row {
-        pattern_fill(
+        let row = pattern_fill(
             nth_grapheme(self.border.right, line),
             self.right_width(),
             self.right_style,
-        )
+        );
+        match &self.blend {
+            Some(b) => paint(row, &b.right, line),
+            None => row,
+        }
     }
 
     /// Wraps a block of equal-width rows with this border.
-    pub fn apply(&self, rows: Vec<Row>) -> Vec<Row> {
+    pub fn apply(&mut self, rows: Vec<Row>) -> Vec<Row> {
         let inner_width = rows
             .iter()
             .map(|r| crate::cells::row_width(r))
             .max()
             .unwrap_or(0);
+        self.prepare(inner_width, rows.len());
         let mut out = Vec::with_capacity(rows.len() + 2);
         if self.top {
             out.push(self.top_row(inner_width));

@@ -38,6 +38,21 @@
 //!   [`StatefulWidget`](ratatui::widgets::StatefulWidget) inside the style's
 //!   margin, border and padding.
 //!
+//! ## Tables, lists and trees
+//!
+//! The [`table`], [`list`] and [`tree`] modules port Lip Gloss's
+//! sub-packages. Each renders to a `Text` and implements ratatui's
+//! `Widget` for a reference (`frame.render_widget(&table, area)`).
+//! Trees and lists also implement `StatefulWidget` with a
+//! [`tree::TreeState`] for selection, collapsing, scrolling and mouse hit
+//! testing.
+//!
+//! ## Gradient borders
+//!
+//! [`Style::border_foreground_blend`] blends colors around the border's
+//! perimeter, and [`Style::border_foreground_blend_offset`] rotates the
+//! gradient. Both [`Style::render`] and [`StyledWidget`] support them.
+//!
 //! ## Colors
 //!
 //! Every color rule accepts `impl Into<TerminalColor>`: Lip Gloss-style
@@ -54,9 +69,12 @@ mod border;
 mod cells;
 mod color;
 mod join;
+pub mod list;
 mod position;
 mod render;
 mod style;
+pub mod table;
+pub mod tree;
 mod widget;
 
 pub use ansi::{to_ansi_string, to_plain_string};
@@ -78,7 +96,11 @@ pub use widget::{BoxLayout, StyledWidget, WidgetStyleExt};
 pub mod prelude {
     pub use crate::{
         AdaptiveColor, Border, Position, Style, StyledWidget, TerminalColor, WidgetStyleExt,
-        join_horizontal, join_vertical, place,
+        join_horizontal, join_vertical,
+        list::List,
+        place,
+        table::{Table, TableRow},
+        tree::{Tree, TreeState},
     };
 }
 

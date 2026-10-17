@@ -141,7 +141,8 @@ impl Style {
         fill_except(buf, l.padding, l.content, &pad_symbol, ws);
 
         // Border.
-        let spec = self.border_spec(dark);
+        let mut spec = self.border_spec(dark);
+        spec.prepare(usize::from(l.padding.width), usize::from(l.padding.height));
         let b = l.border;
         if b.width > 0 && b.height > 0 {
             let inner_w = usize::from(l.padding.width);
